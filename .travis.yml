@@ -1,5 +1,5 @@
-language: generic
 sudo: required
+language: generic
 services:
   - docker
 
@@ -16,7 +16,6 @@ after_success:
   - docker build -t siyandav0/multi-worker ./worker
   # Login to the docker CLI
   - echo "$DOCKER_PASSWORD" | docker login -u  "$DOCKER_ID" --password-stdin
-  
   # Take those images and push them to docker hub
   - docker push siyandav0/multi-client
   - docker push siyandav0/multi-nginx
