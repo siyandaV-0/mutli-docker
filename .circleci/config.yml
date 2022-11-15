@@ -12,7 +12,7 @@ jobs:
       - run:
           name: "Build react-test image"
           command: |
-            docker build -t siyandav0/react-test -f ../client/Dockerfile.dev ../client
+            docker build -t siyandav0/react-test -f ./client/Dockerfile.dev ./client
 
   script:
     executor: docker-publisher
