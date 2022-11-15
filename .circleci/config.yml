@@ -1,35 +1,64 @@
-sudo: required
-language: generic
-services:
-  - docker
+version: 2.1
+executors:
+  docker-publisher:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+jobs:
+  before-install:
+    executor: docker-publisher
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: "Build react-test image"
+          command: |
+            docker build -t siyandav0/react-test -f ../client/Dockerfile.dev ../client
 
-before_install:
-  - docker build -t siyandav0/react-test -f ../client/Dockerfile.dev ../client
+  script:
+    executor: docker-publisher
+    steps:
+      - setup_remote_docker
+      - run:
+          name: "run tests on react-test image"
+          command: |
+            docker run -e CI=true siyandav0/react-test npm test
+      
+  after-success:
+    executor: docker-publisher
+    steps:  
+      - setup_remote_docker  
+      - run:
+          name: "Build and Publish Docker Images"
+          command: |
+            docker build -t siyandav0/multi-client ./client
+            docker build -t siyandav0/multi-nginx ./nginx
+            docker build -t siyandav0/multi-server ./server
+            docker build -t siyandav0/multi-worker ./worker
+          # Login to the docker CLI
+            echo "$DOCKER_PASSWORD" | docker login -u  "$DOCKER_ID" --password-stdin
+          # Take those images and push them to docker hub
+            docker push siyandav0/multi-client
+            docker push siyandav0/multi-nginx
+            docker push siyandav0/multi-server
+            docker push siyandav0/multi-worker
 
-script:
-  - docker run -e CI=true siyandav0/react-test npm test
-
-after_success:
-  - docker build -t siyandav0/multi-client ../client
-  - docker build -t siyandav0/multi-nginx ../nginx
-  - docker build -t siyandav0/multi-server ../server
-  - docker build -t siyandav0/multi-worker ../worker
-  # Login to the docker CLI
-  - echo "$DOCKER_PASSWORD" | docker login -u  "$DOCKER_ID" --password-stdin
-  # Take those images and push them to docker hub
-  - docker push siyandav0/multi-client
-  - docker push siyandav0/multi-nginx
-  - docker push siyandav0/multi-server
-  - docker push siyandav0/multi-worker
-
-# deploy:
-#   provider: elasticbeanstalk
-#   region: 'us-east-1'
-#   app: 'multi-docker'
-#   env: 'Multidocker-env'
-#   bucket_name: 'elasticbeanstalk-us-east-1-579929968227'
-#   bucket_path: 'docker-multi'
-#   on:
-#     branch: master
-#   access_key_id: $AWS_ACCESS_KEY
-#   secret_access_key: $AWS_SECRET_KEY
+workflows:
+  version: 2
+  test-build-push:
+    jobs:
+      - before-install:
+          filters:
+            branches:
+              only: master
+      - script:
+          requires:
+            - before-install
+          filters:
+            branches:
+              only: master
+      - after-success:
+          requires:
+            - script
+          filters:
+            branches:
+              only: master
