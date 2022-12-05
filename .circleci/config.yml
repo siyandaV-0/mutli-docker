@@ -88,6 +88,6 @@ workflows:
           filters:
             branches:
               only:
-                - main
+                - master
           requires:
             - after-success 
